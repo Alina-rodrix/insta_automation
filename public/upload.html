@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Upload Video</title>
+</head>
+<body>
+    <h1>Upload Video</h1>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="video" accept="video/*" required>
+        <button type="submit">Upload</button>
+    </form>
+    <p>After uploading, your video will be displayed below.</p>
+
+    <h2>Uploaded Videos</h2>
+    <div id="videoList"></div>
+
+    <script>
+        // Fetch and display uploaded videos
+        async function fetchVideos() {
+            const response = await fetch('/videos');
+            const videos = await response.json();
+            const videoList = document.getElementById('videoList');
+            videoList.innerHTML = ''; // Clear existing list
+
+            videos.forEach(video => {
+                const videoItem = document.createElement('div');
+                videoItem.innerHTML = `
+                    <video width="320" height="240" controls>
+                        <source src="/uploads/${video}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <button onclick="deleteVideo('${video}')">Delete</button>
+                `;
+                videoList.appendChild(videoItem);
+            });
+        }
+
+        // Function to delete a video
+        async function deleteVideo(filename) {
+            const response = await fetch(`/delete/${filename}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                fetchVideos(); // Refresh the list after deletion
+            } else {
+                alert('Failed to delete video');
+            }
+        }
+
+        // Load videos on page load
+        fetchVideos();
+    </script>
+</body>
+</html>
