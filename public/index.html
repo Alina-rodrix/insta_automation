@@ -1,19 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
-    <title>Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Upload and Management</title>
 </head>
 <body>
-    <h1>Login Page</h1>
-    <form action="/login" method="POST">
-        <input type="password" name="password" placeholder="Enter Password" required>
-        <button type="submit">Submit</button>
-    </form>
-    </body><script>
-        server.js
-    </script>
+  <h1>Upload a Video</h1>
+  <input type="file" id="videoUpload" accept="video/*">
+  <button onclick="uploadVideo()">Upload Video</button>
+
+  <h2>Uploaded Videos</h2>
+  <div id="videoList"></div>
+
+  <!-- Firebase Configuration -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const storage = firebase.storage();
+    const db = firebase.firestore();
+
+    async function uploadVideo() {
+      const videoFile = document.getElementById("videoUpload").files[0];
+      if (!videoFile) return alert("Please select a video file to upload.");
+
+      const storageRef = storage.ref(`videos/${videoFile.name}`);
+      await storageRef.put(videoFile);
+
+      const downloadURL = await storageRef.getDownloadURL();
+      await db.collection("videos").add({
+        name: videoFile.name,
+        url: downloadURL,
+      });
+
+      alert("Video uploaded successfully!");
+      displayVideos();
+    }
+
+    async function displayVideos() {
+      const videoListDiv = document.getElementById("videoList");
+      videoListDiv.innerHTML = ""; // Clear previous video list
+
+      const videosSnapshot = await db.collection("videos").get();
+      videosSnapshot.forEach((doc) => {
+        const videoData = doc.data();
+
+        // Create video element
+        const videoElement = document.createElement("video");
+        videoElement.src = videoData.url;
+        videoElement.controls = true;
+        videoElement.width = 300;
+
+        // Create delete button
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+        deleteButton.onclick = () => deleteVideo(doc.id, videoData.name);
+
+        // Append elements to video list
+        const videoContainer = document.createElement("div");
+        videoContainer.appendChild(videoElement);
+        videoContainer.appendChild(deleteButton);
+        videoListDiv.appendChild(videoContainer);
+      });
+    }
+
+    async function deleteVideo(docId, fileName) {
+      // Delete video from Firebase Storage
+      const storageRef = storage.ref(`videos/${fileName}`);
+      await storageRef.delete();
+
+      // Delete video metadata from Firestore
+      await db.collection("videos").doc(docId).delete();
+
+      alert("Video deleted successfully!");
+      displayVideos();
+    }
+
+    // Load videos on page load
+    window.onload = displayVideos;
+  </script>
 </body>
 </html>
